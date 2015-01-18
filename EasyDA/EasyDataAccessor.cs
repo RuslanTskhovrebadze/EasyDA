@@ -81,7 +81,7 @@ namespace EasyDA
 
 		public void ExecuteCommand(string commandText, object parameters = null)
 		{
-
+            //first change
 		}
 
 		public TResult GetScalarResult<TResult>(string commandText, object parameters = null) where TResult : new()
