@@ -84,37 +84,43 @@ namespace EasyDA
                     || R == typeof(DateTime);
         }
 		
+
+		protected void OpenConnectionIfNeeded(IDbConnection connection)
+		{
+			//connection.State == ConnectionState.
+		}
+
+		protected void CloseConnectionIfNeeded(IDbConnection connection)
+		{
+			//закрывать только если нет транзакции
+			
+		}
+
         #region Execute methods
 
 		public void ExecuteCommand(string commandText, System.Data.CommandType commandType, object parameters = null)
 		{
-            using (IDbConnection conn = CreateConnection())
+			using (IDbCommand command = GetPreparedCommand(commandText, parameters, commandType))
             {
                 try
                 {
-                    IDbCommand command = conn.CreateCommand();
-                    command.CommandText = commandText;
-                    command.CommandType = commandType;
-                    
-                    if (parameters != null) 
-                    {
-                        if (IsPrimitiveType((System.Type)parameters))    
-                        {
-                            command.Parameters.Add(parameters);
-                        }
-                        else
-                        {
-                            // как-то обойти произвольную коллекцию
-                        }
-                    }
-                    
-                    command.ExecuteNonQuery();
+					OpenConnectionIfNeeded(command.Connection);
+					command.ExecuteNonQuery();
                 }
-                catch (Exception ex)
+                catch
                 {                   
-                    throw ex;
-                }    
+                    throw;
+                }
+				finally
+				{
+					CloseConnectionIfNeeded(command.Connection);
+				}
             }
+		}
+
+		public void ExecuteCommand(string commandText, object parameters = null)
+		{
+			ExecuteCommand(commandText, Settings.ProviderCommandType, parameters);
 		}
 
 		public TResult GetScalarResult<TResult>(string commandText, object parameters = null) where TResult : new()

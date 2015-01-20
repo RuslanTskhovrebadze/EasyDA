@@ -14,19 +14,15 @@ namespace EasyDA.Tests
 		public void TestMethod1()
 		{
 			// System.Data.SqlClient.SqlCommand c;
-           
             
-            List<int> parametersList = new List<int>();
-            
-            EasyDA.EasyDataAccessor<SqlConnection> dacc = new EasyDA.EasyDataAccessor<SqlConnection>();
-            dacc.Settings.ConnectionString = "connection";
-
+			EasyDA.EasyDataAccessor<SqlConnection> dacc = new EasyDA.EasyDataAccessor<SqlConnection>("connection string", CommandType.StoredProcedure, null);
+			
             dacc.ExecuteCommand("DELETE * FROM dbo.table", CommandType.Text);
             dacc.ExecuteCommand("DELETE * FROM dbo.table WHERE column1 =@param1", CommandType.Text, "10");
-            dacc.ExecuteCommand("DELETE * FROM dbo.table WHERE column1=@param1 AND column2=@param2", CommandType.Text, parametersList);
+			dacc.ExecuteCommand("DELETE * FROM dbo.table WHERE column1=@param1 AND column2=@param2", CommandType.Text, new {param1=4, param2="sdfsdf" });
 
             dacc.ExecuteCommand("dbo.DeletetionProcedure", CommandType.StoredProcedure);
-            dacc.ExecuteCommand("dbo.DeletetionProcedure", CommandType.StoredProcedure, parametersList); //parameterized stored procedure call
+			dacc.ExecuteCommand("dbo.DeletetionProcedure", CommandType.StoredProcedure, new { param1 = 4, param2 = "sdfsdf" }); //parameterized stored procedure call
 
 		}
 	}
