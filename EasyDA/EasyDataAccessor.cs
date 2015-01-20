@@ -76,12 +76,45 @@ namespace EasyDA
 			//var p = command.CreateParameter();
 		}
 
+        private bool IsPrimitiveType(Type R)
+        {
+            return R.IsPrimitive
+                    || R == typeof(string)
+                    || R == typeof(decimal)
+                    || R == typeof(DateTime);
+        }
+		
+        #region Execute methods
 
-		#region Execute methods
-
-		public void ExecuteCommand(string commandText, object parameters = null)
+		public void ExecuteCommand(string commandText, System.Data.CommandType commandType, object parameters = null)
 		{
-            //first change
+            using (IDbConnection conn = CreateConnection())
+            {
+                try
+                {
+                    IDbCommand command = conn.CreateCommand();
+                    command.CommandText = commandText;
+                    command.CommandType = commandType;
+                    
+                    if (parameters != null) 
+                    {
+                        if (IsPrimitiveType((System.Type)parameters))    
+                        {
+                            command.Parameters.Add(parameters);
+                        }
+                        else
+                        {
+                            // как-то обойти произвольную коллекцию
+                        }
+                    }
+                    
+                    command.ExecuteNonQuery();
+                }
+                catch (Exception ex)
+                {                   
+                    throw ex;
+                }    
+            }
 		}
 
 		public TResult GetScalarResult<TResult>(string commandText, object parameters = null) where TResult : new()
