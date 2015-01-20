@@ -87,12 +87,51 @@ namespace EasyDA
 			}
 		}
 
+        private bool IsPrimitiveType(Type R)
+        {
+            return R.IsPrimitive
+                    || R == typeof(string)
+                    || R == typeof(decimal)
+                    || R == typeof(DateTime);
+        }
+		
+
+		protected void OpenConnectionIfNeeded(IDbConnection connection)
+		{
+			//connection.State == ConnectionState.
+		}
+
+		protected void CloseConnectionIfNeeded(IDbConnection connection)
+		{
+			//закрывать только если нет транзакции
+			
+		}
 
 		#region Execute methods
 
+		public void ExecuteCommand(string commandText, System.Data.CommandType commandType, object parameters = null)
+		{
+			using (IDbCommand command = GetPreparedCommand(commandText, parameters, commandType))
+            {
+                try
+                {
+					OpenConnectionIfNeeded(command.Connection);
+					command.ExecuteNonQuery();
+                }
+                catch
+                {                   
+                    throw;
+                }
+				finally
+				{
+					CloseConnectionIfNeeded(command.Connection);
+				}
+            }
+		}
+
 		public void ExecuteCommand(string commandText, object parameters = null)
 		{
-
+			ExecuteCommand(commandText, Settings.ProviderCommandType, parameters);
 		}
 
 		public TResult GetScalarResult<TResult>(string commandText, object parameters = null) where TResult : new()
