@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data;
+using System.Reflection;
 
 namespace EasyDA
 {
@@ -73,7 +74,17 @@ namespace EasyDA
 
 		protected void FillCommandParameters(IDbCommand command, object o)
 		{
-			//var p = command.CreateParameter();
+			if (o != null)
+			{
+				var properties = o.GetType().GetProperties();
+				foreach (var p in properties)
+				{
+					var parameter = command.CreateParameter();
+					parameter.ParameterName = p.Name;
+					parameter.Value = p.GetValue(o) ?? DBNull.Value;
+					command.Parameters.Add(parameter);
+				}
+			}
 		}
 
 
