@@ -24,6 +24,9 @@ namespace EasyDA.Tests
             dacc.ExecuteCommand("dbo.DeletetionProcedure", CommandType.StoredProcedure);
 			dacc.ExecuteCommand("dbo.DeletetionProcedure", CommandType.StoredProcedure, new { param1 = 4, param2 = "sdfsdf" }); //parameterized stored procedure call
 
+			SqlTransaction t;
+			
+
 		}
 	}
 }

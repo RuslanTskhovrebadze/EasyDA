@@ -93,8 +93,7 @@ namespace EasyDA
                     || R == typeof(string)
                     || R == typeof(decimal)
                     || R == typeof(DateTime);
-        }
-		
+        }		
 
 		protected void OpenConnectionIfNeeded(IDbConnection connection)
 		{
@@ -105,6 +104,29 @@ namespace EasyDA
 		{
 			//закрывать только если нет транзакции
 			
+		}
+
+		/// <summary>
+		/// Returns dictionary with Type property names matchingg DataReader's field names
+		/// </summary>
+		/// <param name="reader"></param>
+		/// <param name="T"></param>
+		/// <returns></returns>
+		protected static Dictionary<string, PropertyInfo> GetCommonProperties(IDataRecord reader, Type T)
+		{
+			var dict = new Dictionary<string, PropertyInfo>();
+			var typeProperties = T.GetProperties().ToDictionary(k=>k.Name.ToUpper());
+			
+			for (int i = 0; i < reader.FieldCount; i++)
+			{
+				var columnName = reader.GetName(i).ToUpper();
+				PropertyInfo prop;
+				if (typeProperties.TryGetValue(columnName, out prop))
+				{
+					dict.Add(columnName, prop);
+				}
+			}
+			return dict;
 		}
 
 		#region Execute methods
@@ -139,21 +161,62 @@ namespace EasyDA
 			return new TResult();
 		}
 
-		public IEnumerable<TResult> GetListResult<TResult>(string commandText, object parameters = null) where TResult : new()
+		public IEnumerable<TResult> GetListResult<TResult>(string commandText, object parameters = null, CommandType? commandType=null) where TResult : new()
 		{
-			return null;
+			return GetListResult<TResult>(false, commandText, parameters, commandType);
 		}
 
-		public TResult GetSingleResult<TResult>(string commandText, object parameters = null) where TResult : new()
+		public TResult GetSingleResult<TResult>(string commandText, object parameters = null, CommandType? commandType=null) where TResult : new()
 		{
-			return new TResult();
+			return GetListResult<TResult>(true, commandText, parameters, commandType).FirstOrDefault();
+		}
+
+		private IEnumerable<TResult> GetListResult<TResult>(bool isFirstResultOnly, string commandText, object parameters = null, CommandType? commandType = null) where TResult : new()
+		{
+			List<TResult> result = new List<TResult>();
+			using (IDbCommand command = GetPreparedCommand(commandText, parameters, commandType.HasValue ? commandType : Settings.ProviderCommandType))
+			{
+				try
+				{
+					OpenConnectionIfNeeded(command.Connection);
+					using (var reader = command.ExecuteReader())
+					{
+						var commonProperties = GetCommonProperties(reader, typeof(T));
+
+						while (reader.Read())
+						{
+							var t = new TResult();
+							foreach (var prop in commonProperties)
+							{
+								var columnValue = reader[prop.Key];
+								if (columnValue != null && !(columnValue is System.DBNull))
+									prop.Value.SetValue(t, columnValue);
+							}
+							result.Add(t);
+
+							//stop reading if only first result needed
+							if (isFirstResultOnly) break;
+						}
+					}
+				}
+				catch
+				{
+					throw;
+				}
+				finally
+				{
+					CloseConnectionIfNeeded(command.Connection);
+				}
+			}
+
+			return result;
 		}
 
 		#endregion
 
 		#region Transaction
 
-		protected IDbTransaction Transaction { get; set; }
+		public IDbTransaction Transaction { get; set; }
 
 		public bool IsTransactionStarted
 		{
@@ -163,24 +226,71 @@ namespace EasyDA
 			}
 		}
 
+		//Number of BeginTransaction() calls were made.
+		//Idea is to have maximum one active transaction.
+		//If new transactions requested while previous exists, just increase the number, but do not start new nested transaction.
+		//During Commit, decrease number and perform actual commit only if number is zero
+		protected int TransactionRequestCount { get; set; }
+
 		public void BeginTransaction()
 		{
+			TransactionRequestCount++;
 
+			if (!IsTransactionStarted)
+			{
+				var connection = CreateConnection();
+				OpenConnectionIfNeeded(connection);
+				Transaction = connection.BeginTransaction();
+			}
 		}
+
+		public void BeginTransaction(IsolationLevel il)
+		{
+			TransactionRequestCount++;
+
+			if (!IsTransactionStarted)
+			{
+				var connection = CreateConnection();
+				OpenConnectionIfNeeded(connection);
+				Transaction = connection.BeginTransaction(il);
+			}
+		}
+
 
 		public void CommitTransaction()
 		{
+			if (IsTransactionStarted)
+			{
+				TransactionRequestCount--;
 
+				//perform actual commit only if it is last commit request
+				if (TransactionRequestCount <= 0)
+				{
+					var connection = Transaction.Connection;
+					Transaction.Commit();
+					Transaction.Dispose();
+					Transaction = null;
+					CloseConnectionIfNeeded(connection);
+				}
+			}
 		}
 		public void RollbackTransaction()
 		{
-
+			if (IsTransactionStarted)
+			{
+				TransactionRequestCount = 0;
+				var connection = Transaction.Connection;
+				Transaction.Rollback();
+				Transaction.Dispose();
+				Transaction = null;
+				CloseConnectionIfNeeded(connection);
+			}
 		}
 		#endregion
 
 		public void Dispose()
 		{
-			throw new NotImplementedException();
+			RollbackTransaction();
 		}
 	}
 }

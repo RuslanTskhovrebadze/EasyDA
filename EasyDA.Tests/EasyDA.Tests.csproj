@@ -25,6 +25,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -51,6 +52,10 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="Mocking\FakeDbCommand.cs" />
+    <Compile Include="Mocking\FakeDbConnection.cs" />
+    <Compile Include="Mocking\FakeDbDataParameter.cs" />
+    <Compile Include="Mocking\FakeDbTransaction.cs" />
     <Compile Include="UnitTest1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
