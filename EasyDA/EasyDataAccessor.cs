@@ -94,29 +94,33 @@ namespace EasyDA
                     || R == typeof(decimal)
                     || R == typeof(DateTime);
         }
-		
 
 		protected void OpenConnectionIfNeeded(IDbConnection connection)
 		{
-			//connection.State == ConnectionState.
+            if (Transaction.Connection.State == ConnectionState.Open || Transaction.Connection.State == ConnectionState.Connecting ||
+                                                                        connection.State == ConnectionState.Open || connection.State == ConnectionState.Connecting)
+                return;
+            else
+                connection.Open();
 		}
 
 		protected void CloseConnectionIfNeeded(IDbConnection connection)
 		{
-			//закрывать только если нет транзакции
-			
+            if ((Transaction.Connection.State == ConnectionState.Open && Transaction.Connection.State != ConnectionState.Connecting) ||
+                                                                         (connection.State == ConnectionState.Open && connection.State != ConnectionState.Connecting))
+                connection.Close();
 		}
 
 		#region Execute methods
 
-		public void ExecuteCommand(string commandText, System.Data.CommandType commandType, object parameters = null)
+		public int ExecuteCommand(string commandText, System.Data.CommandType commandType, object parameters = null)
 		{
 			using (IDbCommand command = GetPreparedCommand(commandText, parameters, commandType))
             {
                 try
                 {
 					OpenConnectionIfNeeded(command.Connection);
-					command.ExecuteNonQuery();
+					return command.ExecuteNonQuery();
                 }
                 catch
                 {                   
@@ -129,14 +133,24 @@ namespace EasyDA
             }
 		}
 
-		public void ExecuteCommand(string commandText, object parameters = null)
+		public TResult GetScalarResult<TResult>(string commandText, object parameters = null, CommandType? commandType = null) where TResult : new()
 		{
-			ExecuteCommand(commandText, Settings.ProviderCommandType, parameters);
-		}
-
-		public TResult GetScalarResult<TResult>(string commandText, object parameters = null) where TResult : new()
-		{
-			return new TResult();
+            using (IDbCommand command = GetPreparedCommand (commandText, parameters, commandType)) 
+            {
+                try
+                {
+                    OpenConnectionIfNeeded(command.Connection);
+                    return (TResult)command.ExecuteScalar();
+                }
+                catch
+                {
+                    throw;
+                }
+                finally
+                {
+                    CloseConnectionIfNeeded(command.Connection);
+                }
+            }
 		}
 
 		public IEnumerable<TResult> GetListResult<TResult>(string commandText, object parameters = null) where TResult : new()

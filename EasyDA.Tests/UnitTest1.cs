@@ -24,6 +24,15 @@ namespace EasyDA.Tests
             dacc.ExecuteCommand("dbo.DeletetionProcedure", CommandType.StoredProcedure);
 			dacc.ExecuteCommand("dbo.DeletetionProcedure", CommandType.StoredProcedure, new { param1 = 4, param2 = "sdfsdf" }); //parameterized stored procedure call
 
+            // test for ExecuteScalar
+
+            EasyDA.EasyDataAccessor<SqlConnection> daccScalar = new EasyDA.EasyDataAccessor<SqlConnection>();
+            daccScalar.Settings.ConnectionString = "connection";
+            int count1 = daccScalar.GetScalarResult<int>
+                ("SELECT count(column1) FROM dbo.table WHERE column2 = @param1 AND column2 = @param2", new { param1 = 10, param2 = 'B' });
+
+            daccScalar.Settings.ProviderCommandType = CommandType.StoredProcedure;
+            int count2 = daccScalar.GetScalarResult<int>("dbo.StoredScalar");
 		}
 	}
 }
